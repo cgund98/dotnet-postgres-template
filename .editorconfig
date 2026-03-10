@@ -1,0 +1,31 @@
+root = true
+
+[*.cs]
+# Indentation
+indent_style = space
+indent_size = 4
+
+# Braces
+csharp_new_line_before_open_brace = all
+csharp_prefer_braces = when_multiline
+
+# var usage
+csharp_style_var_for_built_in_types = true
+csharp_style_var_when_type_is_apparent = true
+csharp_style_var_elsewhere = true
+
+# Expression preferences
+csharp_style_expression_bodied_methods = when_on_single_line
+csharp_style_expression_bodied_properties = true
+
+# Namespace
+csharp_style_namespace_declarations = file_scoped
+
+# Usings
+dotnet_sort_system_directives_first = true
+
+# Severity: make style violations warnings or errors
+dotnet_diagnostic.IDE0005.severity = warning  # Remove unnecessary using
+dotnet_diagnostic.IDE0055.severity = warning  # Fix formatting
+dotnet_diagnostic.IDE0161.severity = warning  # Use file-scoped namespace
+dotnet_diagnostic.RCS1194.severity = none      # Exception constructors not needed for domain exceptions
