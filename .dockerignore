@@ -1,0 +1,15 @@
+.git
+.cursor
+.vs
+.vscode
+
+**/bin
+**/obj
+
+**/node_modules
+
+*.md
+!resources/**/*.md
+
+resources/docker
+resources/scripts

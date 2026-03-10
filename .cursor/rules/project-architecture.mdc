@@ -1,0 +1,33 @@
+---
+description: Core architecture and project conventions for this .NET template
+alwaysApply: true
+---
+
+# Project Architecture
+
+This is a .NET 10 REST API with PostgreSQL using a layered architecture (Api → Domain ← Infrastructure).
+
+## Layer Rules
+
+- **Domain** has no external dependencies except `Serilog` for logging.
+- **Infrastructure** implements Domain interfaces (repositories, persistence).
+- **Api** is the composition root — all DI wiring happens in `Program.cs`.
+- Dependencies point inward: Api → Domain ← Infrastructure.
+
+## Key Patterns
+
+- **Ambient scoped DbContext**: Repositories receive `IDbContext` via DI, not connection parameters.
+- **TransactionManager**: Mutations use `transactionManager.TransactionAsync(async () => ...)` for automatic commit/rollback.
+- **Reads bypass transactions**: Query methods call the repository directly (lazy connection).
+- **Two-layer validation**: FluentValidation at API boundary, domain validators for business rules.
+- **Problem Details (RFC 9457)**: All errors return `ProblemDetails` via `DomainExceptionHandler`.
+
+## Organization
+
+Code is organized by domain feature, not by technical role:
+
+```
+src/Domain/Users/     → User.cs, Commands.cs, UserService.cs, UserValidators.cs, UserRepository.cs (interface)
+src/Infrastructure/Users/ → UserRepository.cs (Dapper implementation)
+src/Api/Users/        → UserEndpoints.cs, UserContracts.cs
+```

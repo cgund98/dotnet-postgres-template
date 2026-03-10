@@ -1,0 +1,39 @@
+---
+description: C# coding conventions for this project
+globs: "**/*.cs"
+alwaysApply: false
+---
+
+# C# Conventions
+
+## Style
+
+- Use `record` types for immutable data (models, commands, DTOs).
+- Use primary constructors for DI (`public class UserService(IUserRepository repo)`).
+- Use file-scoped namespaces.
+- Suffix async methods with `Async` (e.g., `CreateUserAsync`).
+- Prefix interfaces with `I` (e.g., `IUserRepository`).
+- Use `var` when the type is apparent.
+
+## Domain Layer
+
+- Domain models are `record` types — no mutable state.
+- Commands are `record` types with optional fields nullable (`string? Name = null` for patches).
+- Validators are `static` methods on a static class (e.g., `UserValidators.ValidateName`).
+- Domain exceptions: `ValidationException`, `NotFoundException`, `DuplicateException`.
+- Repository interfaces live in the Domain layer alongside the entity they serve.
+
+## API Layer
+
+- Endpoints use Minimal APIs on `RouteGroupBuilder` extension methods.
+- Request/response DTOs are `record` types in `*Contracts.cs`.
+- FluentValidation validators live alongside their DTOs in the contracts file.
+- Use `Serilog.Log.ForContext(...)` for structured logging in static endpoint classes.
+- Always add `.WithName()`, `.WithDescription()`, and `.Produces<T>()` to endpoints.
+
+## Infrastructure Layer
+
+- Repositories use Dapper with raw SQL — no ORM.
+- Always pass `transaction: db.Transaction` to Dapper calls.
+- Use `Guid.CreateVersion7()` for new entity IDs.
+- Dapper maps snake_case columns to PascalCase properties via `DefaultTypeMap.MatchNamesWithUnderscores`.

@@ -1,0 +1,126 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: dotnet-postgres-template-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  localstack:
+    image: localstack/localstack:latest
+    container_name: dotnet-postgres-template-localstack
+    ports:
+      - "4566:4566"
+      - "4510-4559:4510-4559"
+    environment:
+      - SERVICES=sns,sqs
+      - DEBUG=1
+      - PERSISTENCE=0
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    build:
+      context: .
+      dockerfile: resources/docker/migrate.Dockerfile
+    image: app-migrations:latest
+    container_name: dotnet-postgres-template-migrate
+    command: ["-path", "/migrations", "-database", "postgres://postgres:postgres@postgres:5432/app?sslmode=disable", "up"]
+    volumes:
+      - ./resources/db/migrations:/migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - migrate
+
+  app-api:
+    image: app:latest
+    container_name: dotnet-postgres-template-api
+    ports:
+      - "8081:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__Postgres=Host=postgres;Port=5432;Database=app;Username=postgres;Password=postgres
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - Aws__EventTopicArn=arn:aws:sns:us-east-1:000000000000:events.fifo
+    depends_on:
+      postgres:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    profiles:
+      - app
+
+  app-worker:
+    image: app:latest
+    container_name: dotnet-postgres-template-worker
+    command: ["dotnet", "/app/worker/PostgresTemplate.Worker.dll"]
+    environment:
+      - DOTNET_ENVIRONMENT=Production
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - Aws__UserEventsQueueUrl=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/user-events.fifo
+    depends_on:
+      localstack:
+        condition: service_healthy
+    profiles:
+      - app
+
+  workspace:
+    build:
+      context: .
+      dockerfile: resources/docker/workspace.Dockerfile
+    image: dotnet-postgres-template-workspace:latest
+    platform: linux/amd64
+    container_name: dotnet-postgres-template-workspace
+    volumes:
+      - .:/workspace
+      - workspace_build:/tmp/build
+    ports:
+      - "8080:8080"
+    environment:
+      - DOTNET_BUILD_DIR=/tmp/build
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=app
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
+    profiles:
+      - workspace
+
+volumes:
+  postgres_data:
+  workspace_build:

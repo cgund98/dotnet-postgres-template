@@ -1,0 +1,12 @@
+---
+description: .NET CLI conventions
+alwaysApply: true
+---
+
+# .NET CLI
+
+When adding NuGet packages, use the project directory (not the .csproj path):
+
+```bash
+dotnet add src/Infrastructure package AWSSDK.SimpleNotificationService
+```

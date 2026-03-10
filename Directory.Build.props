@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup Condition="'$(DOTNET_BUILD_DIR)' != ''">
+    <BaseIntermediateOutputPath>$(DOTNET_BUILD_DIR)/obj/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(DOTNET_BUILD_DIR)/bin/$(MSBuildProjectName)/</BaseOutputPath>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj/**;bin/**</DefaultItemExcludes>
+  </PropertyGroup>
+</Project>

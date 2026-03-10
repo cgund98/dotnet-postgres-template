@@ -1,0 +1,39 @@
+---
+description: Checklist for adding a new domain entity to the project
+globs: "src/**/*.cs"
+alwaysApply: false
+---
+
+# Adding a New Domain Entity
+
+When adding a new entity (e.g., `Order`), create these files in order:
+
+## 1. Domain Layer (`src/Domain/Orders/`)
+
+- `Order.cs` — immutable `record` with all fields
+- `Commands.cs` — `CreateOrderCommand`, `PatchOrderCommand` records
+- `OrderRepository.cs` — `IOrderRepository` interface with async methods
+- `OrderValidators.cs` — static validation methods
+- `OrderService.cs` — orchestrates validators + repository + transactions
+
+## 2. Infrastructure Layer (`src/Infrastructure/Orders/`)
+
+- `OrderRepository.cs` — implements `IOrderRepository` using Dapper + `IDbContext`
+
+## 3. API Layer (`src/Api/Orders/`)
+
+- `OrderContracts.cs` — request/response records + FluentValidation validators
+- `OrderEndpoints.cs` — `MapOrderEndpoints` extension method on `RouteGroupBuilder`
+
+## 4. Wiring
+
+- Register in `Program.cs`: `AddScoped<IOrderRepository, OrderRepository>()` and `AddScoped<OrderService>()`
+- Map endpoints: `api.MapOrderEndpoints()`
+
+## 5. Database
+
+- Create migration: `make migrate-create NAME=create_orders_table`
+
+## 6. Tests
+
+- Add `tests/Domain.Tests/Orders/OrderValidatorsTests.cs`

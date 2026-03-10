@@ -1,0 +1,30 @@
+---
+description: Testing conventions and patterns
+globs: "tests/**/*.cs"
+alwaysApply: false
+---
+
+# Testing Conventions
+
+## Stack
+
+- **xUnit** for test framework (`[Fact]`, `[Theory]`)
+- **NSubstitute** for mocking (`Substitute.For<IUserRepository>()`)
+- No database required — all tests mock repository interfaces
+
+## Patterns
+
+- Test domain validators and services, not infrastructure.
+- Mock `IUserRepository` (and other repo interfaces) with NSubstitute.
+- Use `Arg.Any<T>()` for flexible argument matching.
+- Test both happy paths and exception cases (`Assert.Throws`, `Assert.ThrowsAsync`).
+
+## File Organization
+
+```
+tests/Domain.Tests/
+└── Users/
+    └── UserValidatorsTests.cs
+```
+
+Mirror the domain structure: one test class per validator/service class.
