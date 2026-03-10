@@ -9,7 +9,7 @@ This is a .NET 10 REST API with PostgreSQL using a layered architecture (Api →
 
 ## Layer Rules
 
-- **Domain** has zero external dependencies. No NuGet packages, no ASP.NET references.
+- **Domain** has no external dependencies except `Serilog` for logging.
 - **Infrastructure** implements Domain interfaces (repositories, persistence).
 - **Api** is the composition root — all DI wiring happens in `Program.cs`.
 - Dependencies point inward: Api → Domain ← Infrastructure.

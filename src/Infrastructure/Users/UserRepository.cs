@@ -68,9 +68,9 @@ public class UserRepository(IDbContext db) : IUserRepository
         );
     }
 
-    public async Task<User> DeleteAsync(Guid id)
+    public async Task<User?> DeleteAsync(Guid id)
     {
-        return await db.Connection.QuerySingleAsync<User>(
+        return await db.Connection.QuerySingleOrDefaultAsync<User>(
             """
             DELETE FROM users
             WHERE id = @Id

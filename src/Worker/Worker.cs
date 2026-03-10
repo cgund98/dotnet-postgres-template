@@ -1,16 +1,21 @@
+using PostgresTemplate.Infrastructure.Events.Sqs;
+using Serilog;
+
 namespace PostgresTemplate.Worker;
 
-public class Worker(ILogger<Worker> logger) : BackgroundService
+public class Worker(SqsEventConsumer consumer) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        while (!stoppingToken.IsCancellationRequested)
+        Log.Information("Starting worker");
+        try
         {
-            if (logger.IsEnabled(LogLevel.Information))
-            {
-                logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
-            }
-            await Task.Delay(1000, stoppingToken);
+            await consumer.ConsumeAsync(stoppingToken);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error starting worker");
+            throw;
         }
     }
 }

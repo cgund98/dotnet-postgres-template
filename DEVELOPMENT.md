@@ -115,6 +115,10 @@ Migrations are managed with [golang-migrate](https://github.com/golang-migrate/m
 |---------|-------------|
 | `make build-image` | Build the production Docker image |
 | `make build-migrations` | Build the migrations Docker image |
+| `make app-api` | Build and run the API container |
+| `make app-worker` | Build and run the worker container |
+| `make app-up` | Build and run both API + worker containers |
+| `make app-down` | Stop API and worker containers |
 
 ## Development Workflow
 
@@ -142,12 +146,14 @@ tests/Domain.Tests/
 
 ## Docker Services
 
-| Service | Port | Description |
-|---------|------|-------------|
-| `postgres` | 5432 | PostgreSQL 16 database |
-| `localstack` | 4566 | AWS LocalStack (SNS/SQS) |
-| `workspace` | 8080 | Development container |
-| `migrate` | — | One-shot migration runner |
+| Service | Port | Profile | Description |
+|---------|------|---------|-------------|
+| `postgres` | 5432 | default | PostgreSQL 16 database |
+| `localstack` | 4566 | default | AWS LocalStack (SNS FIFO / SQS FIFO) |
+| `workspace` | 8080 | workspace | Development container |
+| `migrate` | — | migrate | One-shot migration runner |
+| `app-api` | 8080 | app | Production API container |
+| `app-worker` | — | app | Production worker container |
 
 ## Host / Container Build Cache
 

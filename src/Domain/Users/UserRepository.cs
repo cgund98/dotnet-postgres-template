@@ -6,7 +6,7 @@ public interface IUserRepository
     Task<User?> GetByIdAsync(Guid id);
     Task<User?> GetByEmailAsync(string email);
     Task<User> UpdatePartialAsync(PatchUserCommand command);
-    Task<User> DeleteAsync(Guid id);
+    Task<User?> DeleteAsync(Guid id);
     Task<List<User>> ListAsync(int limit, int offset);
     Task<int> CountAsync();
 }

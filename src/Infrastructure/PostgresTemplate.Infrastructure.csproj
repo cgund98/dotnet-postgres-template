@@ -5,12 +5,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AWSSDK.SimpleNotificationService" Version="4.0.2.18" />
+    <PackageReference Include="AWSSDK.SQS" Version="4.0.2.16" />
     <PackageReference Include="Dapper" Version="2.1.72" />
     <PackageReference Include="Npgsql" Version="10.0.1" />
     <PackageReference Include="Roslynator.Analyzers" Version="4.15.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Serilog" Version="4.3.1" />
   </ItemGroup>
 
   <PropertyGroup>

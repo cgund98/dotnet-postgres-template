@@ -28,16 +28,16 @@ The application follows a pragmatic **3-tier architecture** with ideas borrowed 
 └──────────────────────────────────────────────────────┘
 ```
 
-Dependencies point inward: Api → Domain ← Infrastructure. The Domain layer has **zero** external dependencies.
+Dependencies point inward: Api → Domain ← Infrastructure. The Domain layer has no external dependencies except `Serilog` for logging.
 
 ## Projects
 
 | Project | Role | Key dependencies |
 |---------|------|-----------------|
 | `Api` | HTTP endpoints, DI composition root | ASP.NET Core, FluentValidation, Serilog, Scalar |
-| `Domain` | Business logic, interfaces | None (pure C#) |
-| `Infrastructure` | Data access, external services | Dapper, Npgsql |
-| `Worker` | Background job processing | Microsoft.Extensions.Hosting |
+| `Domain` | Business logic, interfaces | Serilog |
+| `Infrastructure` | Data access, event publishing/consuming | Dapper, Npgsql, AWS SDK (SNS, SQS) |
+| `Worker` | Background event consumer | Microsoft.Extensions.Hosting, Serilog |
 | `Domain.Tests` | Unit tests | xUnit, NSubstitute |
 
 ## Layer Responsibilities
@@ -61,7 +61,8 @@ Pure business logic with no infrastructure dependencies. Organized by domain.
 - **Validators** (`UserValidators.cs`): Static methods for business rule validation (including async repository checks)
 - **Repository interfaces** (`UserRepository.cs`): `IUserRepository` — the port that Infrastructure implements
 - **Persistence interfaces** (`Persistence/`): `IDbContext` and `ITransactionManager`
-- **Exceptions** (`Exceptions/`): `ValidationException`, `NotFoundException`, `DuplicateException`
+- **Exceptions** (`Exceptions/`): `ValidationException`, `NotFoundException`, `DuplicateException`, `EventException`
+- **Events** (`Events/`): `IEventPayload`, `IEventPublisher`, `IEventConsumer`, `IEventHandler<T>`, `EventEnvelope` (CloudEvents v1.0), `EventRouter`, `EventHandlerRegistration<T>`
 
 ### Infrastructure Layer (`src/Infrastructure/`)
 
@@ -70,6 +71,8 @@ Implements domain interfaces using concrete technologies.
 - **Repositories** (`Users/UserRepository.cs`): Dapper-based SQL queries against `IDbContext`
 - **DbContext** (`Persistence/Postgres/DbContext.cs`): Ambient scoped context holding the current `NpgsqlConnection` and `IDbTransaction`
 - **TransactionManager** (`Persistence/Postgres/TransactionManager.cs`): Opens a connection, begins a transaction, sets it on `DbContext`, commits or rolls back
+- **Event Publisher** (`Events/Sns/SnsEventPublisher.cs`): Publishes CloudEvents envelopes to SNS FIFO topics with message group and deduplication
+- **Event Consumer** (`Events/Sqs/SqsEventConsumer.cs`): Long-polls SQS FIFO queues and routes messages through `EventRouter`
 
 ## Design Patterns
 
@@ -127,6 +130,28 @@ All errors flow through `DomainExceptionHandler` (`IExceptionHandler`) and are r
 
 Only 500 errors are logged with the exception. Client-facing 500 responses never leak internal details.
 
+### Event-Driven Messaging
+
+Events use a CloudEvents v1.0 envelope published to SNS FIFO and consumed via SQS FIFO:
+
+```
+UserService (publish after commit)
+  → IEventPayload.ToEnvelope() → EventEnvelope (CloudEvents)
+  → SnsEventPublisher → SNS FIFO topic
+  → SNS filter policy routes by event_type attribute
+  → SQS FIFO queue (per domain, e.g. user-events.fifo)
+  → SqsEventConsumer → EventRouter
+  → EventHandlerRegistration<T> (deserializes to concrete type)
+  → IEventHandler<T> (typed handler)
+```
+
+Key design decisions:
+
+- **FIFO ordering**: `MessageGroupId` is the aggregate ID, ensuring ordered processing per entity
+- **Type-safe handlers**: `EventRouter` maps event type strings to `IEventHandler<TPayload>` via `EventHandlerRegistration<T>`, which owns deserialization
+- **Fire-and-forget publishing**: Events are published after the transaction commits. For guaranteed delivery, replace with a transactional outbox pattern
+- **SNS filter policies**: Each SQS queue subscribes to multiple event types via message attribute filters, so one queue per domain rather than one per event type
+
 ### Dependency Injection
 
 All wiring happens in `Program.cs`. Services, repositories, and persistence types are registered as **scoped** (one instance per HTTP request):
@@ -165,6 +190,7 @@ HTTP POST /api/v1/users
     → UserValidators.ValidateCreateUserAsync (duplicate check inside transaction)
     → UserRepository.CreateAsync (INSERT inside transaction)
   → Commit
+  → IEventPublisher.PublishAsync (fire-and-forget to SNS)
   → UserResponse DTO
   → HTTP 201 JSON
 ```
@@ -200,6 +226,11 @@ src/Infrastructure/Users/
 src/Api/Users/
 ├── UserEndpoints.cs     # Minimal API route definitions
 └── UserContracts.cs     # Request/response DTOs + FluentValidation
+
+src/Worker/Users/
+├── UserCreatedHandler.cs  # IEventHandler<UserCreatedEvent>
+├── UserUpdatedHandler.cs  # IEventHandler<UserUpdatedEvent>
+└── UserDeletedHandler.cs  # IEventHandler<UserDeletedEvent>
 ```
 
 ### Adding a New Domain

@@ -1,4 +1,4 @@
-.PHONY: help workspace-up workspace-down workspace-build workspace-shell restore build clean test lint fix run-api run-worker add remove build-image build-migrations migrate migrate-up migrate-down migrate-version migrate-force migrate-create localstack-up localstack-down localstack-setup localstack-logs
+.PHONY: help workspace-up workspace-down workspace-build workspace-shell restore build clean test lint fix run-api run-worker add remove build-image build-migrations app-api app-worker app-up app-down migrate migrate-up migrate-down migrate-version migrate-force migrate-create localstack-up localstack-down localstack-setup localstack-logs
 
 SERVICE := workspace
 
@@ -63,6 +63,18 @@ remove: ## Remove a NuGet package (usage: make remove PROJECT=src/Api PKG=Serilo
 # Production Docker image builds
 build-image: ## Build the production Docker image
 	docker build -f resources/docker/app.Dockerfile -t app:latest .
+
+app-api: build-image ## Run the API from the production image
+	docker compose --profile app up -d app-api
+
+app-worker: build-image ## Run the worker from the production image
+	docker compose --profile app up -d app-worker
+
+app-up: build-image ## Run both API and worker from the production image
+	docker compose --profile app up -d app-api app-worker
+
+app-down: ## Stop API and worker containers
+	docker compose --profile app down
 
 build-migrations: ## Build migrations Docker image
 	docker build -f resources/docker/migrate.Dockerfile -t app-migrations:latest .
